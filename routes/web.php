@@ -11,6 +11,7 @@ use App\Http\Controllers\Central\Auth\RegisteredUserController;
 use App\Http\Controllers\Central\Auth\VerifyEmailController;
 use App\Http\Controllers\Central\DashboardController;
 use App\Http\Controllers\Central\ProfileController;
+use App\Http\Controllers\Central\TenantController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -102,6 +103,11 @@ Route::domain($centralDomain)->group(function () {
             // Dashboard
             Route::get('dashboard', [DashboardController::class, 'index'])
                 ->name('dashboard');
+
+            // Tenants
+            Route::resource('tenants', TenantController::class)->only(['index', 'create', 'store', 'destroy']);
+            Route::post('tenants/{tenant}/suspend', [TenantController::class, 'suspend'])->name('tenants.suspend');
+            Route::post('tenants/{tenant}/restore', [TenantController::class, 'restore'])->name('tenants.restore');
 
             // Profile
             Route::get('profile', [ProfileController::class, 'edit'])

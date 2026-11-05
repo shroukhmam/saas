@@ -12,7 +12,7 @@ class DashboardController extends Controller
     {
         $stats = [
             'total_tenants'  => Tenant::count(),
-            'active_tenants' => Tenant::count(), // extend when status column is added
+            'active_tenants' => Tenant::where('status', \App\Enums\TenantStatus::Active)->count(),
         ];
 
         return view('central.dashboard', compact('stats'));
