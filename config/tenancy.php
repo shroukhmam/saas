@@ -132,7 +132,9 @@ return [
          * disable asset() helper tenancy and explicitly use tenant_asset() calls in places
          * where you want to use tenant-specific assets (product images, avatars, etc).
          */
-        'asset_helper_tenancy' => true,
+        // Off: with it on, asset() points to /tenancy/assets/... on tenant domains and
+        // the Vite CSS/JS (public/build) does not load. Use tenant_asset() for tenant files.
+        'asset_helper_tenancy' => false,
     ],
 
     /**

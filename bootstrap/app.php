@@ -12,6 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Where "auth" sends guests and "guest" sends signed-in users.
+        // There is no route named "login": the central and tenant apps each have their own.
+        $middleware->redirectGuestsTo(fn () => tenancy()->initialized ? route('tenant.login') : route('central.login'));
+        $middleware->redirectUsersTo(fn () => tenancy()->initialized ? route('tenant.dashboard') : route('central.dashboard'));
+
         // Tenancy middleware aliases — used in routes/tenant.php and routes/api.php
         $middleware->alias([
             'tenancy.domain'    => Stancl\Tenancy\Middleware\InitializeTenancyByDomain::class,
