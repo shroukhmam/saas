@@ -9,7 +9,7 @@ A multi-tenant e-commerce platform built on Laravel 11. Each store (tenant) gets
 | Framework | Laravel 11 (PHP 8.2) |
 | Multi-tenancy | [stancl/tenancy](https://tenancyforlaravel.com) v3, schema per tenant |
 | Database | PostgreSQL (`saas_landlord`) |
-| Cache | Redis 7.4 via `predis/predis` (needed for tenant cache tags) |
+| Cache | Redis (installed on the machine) via `predis/predis` (needed for tenant cache tags) |
 | Central admin auth | Laravel Breeze (Blade) |
 | API auth | Laravel Sanctum (tokens live in the tenant schema) |
 
@@ -39,7 +39,7 @@ Never put a tenant migration in `database/migrations`. It will run on the centra
 
 ## Local setup
 
-Requirements: PHP 8.2 with `pdo_pgsql`, Composer, Node.js, PostgreSQL, Docker.
+Requirements: PHP 8.2 with `pdo_pgsql`, Composer, Node.js, PostgreSQL, Redis.
 
 1. Install the dependencies:
    ```bash
@@ -52,10 +52,12 @@ Requirements: PHP 8.2 with `pdo_pgsql`, Composer, Node.js, PostgreSQL, Docker.
    php artisan key:generate
    ```
 3. Create the PostgreSQL database and user that `.env` names (`saas_landlord` / `saas_user` by default).
-4. Start Redis:
+4. Install Redis and make sure that it runs (Ubuntu / Debian):
    ```bash
-   docker compose up -d redis
+   sudo apt install -y redis-server
+   redis-cli ping   # answers PONG
    ```
+   The `redis-server` service starts with the machine.
 5. Run the central migrations and create the central admin:
    ```bash
    php artisan migrate
@@ -66,16 +68,9 @@ Requirements: PHP 8.2 with `pdo_pgsql`, Composer, Node.js, PostgreSQL, Docker.
    php artisan serve
    ```
 7. Open http://localhost:8000/admin/login and sign in as `admin@saas.local` / `password`.
+   Use `localhost`, not `127.0.0.1`. The central routes are bound to `CENTRAL_DOMAIN`, and other central domains redirect to it.
 
 > **Warning:** The seeded password is for local development only. Change it on any shared or public server.
-
-### Run everything in Docker
-
-`compose.yaml` has an `app` service (PHP 8.2, `php artisan serve` on port 8000) and a `redis` service. The `app` service uses the host network, so it reaches PostgreSQL on `127.0.0.1:5432`.
-
-```bash
-docker compose up -d
-```
 
 ## Folder layout
 
