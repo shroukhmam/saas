@@ -1,0 +1,26 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: saas-ecommerce-app
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+    network_mode: host
+    depends_on:
+      - redis
+
+  # Cache store with tag support. stancl/tenancy's CacheTenancyBootstrapper
+  # needs cache tags to keep each tenant's keys apart.
+  redis:
+    image: redis:7.4-alpine
+    container_name: saas-ecommerce-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  redis-data:
