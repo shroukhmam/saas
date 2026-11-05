@@ -1,66 +1,120 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SaaS E-commerce
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A multi-tenant e-commerce platform built on Laravel 11. Each store (tenant) gets its own PostgreSQL schema, its own admin panel, and a mobile API.
 
-## About Laravel
+## Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+| Part | Choice |
+|---|---|
+| Framework | Laravel 11 (PHP 8.2) |
+| Multi-tenancy | [stancl/tenancy](https://tenancyforlaravel.com) v3, schema per tenant |
+| Database | PostgreSQL (`saas_landlord`) |
+| Cache | Redis 7.4 via `predis/predis` (needed for tenant cache tags) |
+| Central admin auth | Laravel Breeze (Blade) |
+| API auth | Laravel Sanctum (tokens live in the tenant schema) |
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Architecture
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+```
+saas_landlord (PostgreSQL)
+├── public              ← central tables: users, tenants, domains, plans, jobs, cache
+├── tenant_<id>         ← one schema per store: users, products, orders, tokens, ...
+└── tenant_<id>
+```
 
-## Learning Laravel
+- **Central app** (`routes/web.php`): the landlord admin panel under `/admin`. It runs on the central domains (`localhost`, `127.0.0.1`, `CENTRAL_DOMAIN`).
+- **Tenant app** (`routes/tenant.php`): each store's admin panel. `InitializeTenancyByDomain` picks the tenant from the domain.
+- **Mobile API** (`routes/api.php`): `/api/v1/...`, identified by subdomain or the `X-Tenant` header.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Tenancy bootstrappers switch the database schema, cache tags, storage path and queue context when a tenant is active.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+### Migrations
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Folder | Runs on | Command |
+|---|---|---|
+| `database/migrations` | central `public` schema | `php artisan migrate` |
+| `database/migrations-tenant` | every tenant schema | `php artisan tenants:migrate` |
 
-## Laravel Sponsors
+Never put a tenant migration in `database/migrations`. It will run on the central schema.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Local setup
 
-### Premium Partners
+Requirements: PHP 8.2 with `pdo_pgsql`, Composer, Node.js, PostgreSQL, Docker.
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+1. Install the dependencies:
+   ```bash
+   composer install
+   npm install && npm run build
+   ```
+2. Copy the environment file and make an app key:
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+3. Create the PostgreSQL database and user that `.env` names (`saas_landlord` / `saas_user` by default).
+4. Start Redis:
+   ```bash
+   docker compose up -d redis
+   ```
+5. Run the central migrations and create the central admin:
+   ```bash
+   php artisan migrate
+   php artisan db:seed --class=CentralAdminSeeder
+   ```
+6. Start the app:
+   ```bash
+   php artisan serve
+   ```
+7. Open http://localhost:8000/admin/login and sign in as `admin@saas.local` / `password`.
 
-## Contributing
+> **Warning:** The seeded password is for local development only. Change it on any shared or public server.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Run everything in Docker
 
-## Code of Conduct
+`compose.yaml` has an `app` service (PHP 8.2, `php artisan serve` on port 8000) and a `redis` service. The `app` service uses the host network, so it reaches PostgreSQL on `127.0.0.1:5432`.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+docker compose up -d
+```
 
-## Security Vulnerabilities
+## Folder layout
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```
+app/
+├── Http/Controllers/{Central,Tenant,Api}
+├── Http/Middleware/{Central,Tenant}
+├── Http/Requests/{Central,Tenant,Api}
+├── Models/Central        ← Tenant, Domain, Plan (central connection)
+├── Models/Tenant         ← Product, Order, Customer (tenant connection)
+├── Services              ← TenantProvisioningService, OrderService, InventoryService
+└── Actions/{Central,Tenant}
+database/
+├── migrations            ← central only
+└── migrations-tenant     ← tenant only
+routes/
+├── web.php               ← central admin
+├── tenant.php            ← tenant admin
+└── api.php               ← mobile API
+```
 
-## License
+## Progress
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+| Phase | Focus | Status |
+|---|---|---|
+| 0 | Laravel + tenancy + Breeze setup | Done |
+| 1 | Central and tenant migrations | In progress: central tables partly done, tenant tables not started |
+| 2 | Tenant provisioning | Not started |
+| 3 | Central admin (tenants, plans) | Login done, management not started |
+| 4 | Tenant auth | Not started |
+| 5 | Tenant panel (products, orders, settings) | Not started |
+| 6 | Mobile API | Not started |
+| 7 | Queues, storage, caching, events | Caching done (Redis + tags), the rest partly done |
+| 8 | Tests | Not started |
+
+## Common pitfalls
+
+- Do not query tenant models before tenancy starts. The query goes to the central schema without an error.
+- `personal_access_tokens` must stay in the tenant schema, or tokens from all tenants mix together.
+- Queued jobs must start tenancy again in the worker. `QueueTenancyBootstrapper` does this for jobs that you dispatch inside a tenant.
+- Deleting a tenant drops its schema (`TenantDeleted` → `DeleteDatabase`). Back up first.
+- Redis must run. With `CACHE_STORE=redis`, the app fails on any cache call when Redis is down.
