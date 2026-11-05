@@ -55,6 +55,13 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     /*
+    | The one domain that serves the central (landlord) routes in routes/web.php.
+    | Other entries in tenancy.central_domains redirect to it.
+    */
+
+    'central_domain' => env('CENTRAL_DOMAIN', 'localhost'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
